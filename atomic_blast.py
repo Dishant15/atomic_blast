@@ -1,7 +1,7 @@
 from Tkinter import *
 
-grid_size = 500
-grid_resolution = 40  # space
+grid_size = 600
+grid_resolution = 40  # Grid dimensions = (grid_size/grid_resolution) x (grid_size/grid_resolution)
 
 class GridNodes(object):
 	"""contains data for each nodes inside grid"""
