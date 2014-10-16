@@ -6,6 +6,7 @@ grid_resolution = 40  # Grid dimensions = (grid_size/grid_resolution) x (grid_si
 class GridNodes(object):
 	"""contains data for each nodes inside grid"""
 	def __init__(self, canvas, x, y):
+		self.node_type = None 			# which player has his dice in the node
 		self.canvas = canvas
 		self.x = x
 		self.y = y
@@ -29,7 +30,10 @@ class GridNodes(object):
 		self.current_state = 0   # no of atoms in this node currently
 		self.circles = [] 		 # circle objects to delete them
 
-	def update(self, nodes):
+	def update(self, turn):
+		# print "inside",self.x,self.y,"turn",turn
+		if self.node_type == None:
+			self.node_type = turn
 		self.current_state = self.current_state + 1
 		if self.current_state == self.cap:
 			# atom blast state
@@ -37,23 +41,41 @@ class GridNodes(object):
 			for each_circle in self.circles:
 				self.canvas.delete(each_circle)
 			self.circles = []
+			# reset node ownership
+			self.node_type = None
 			# update neghbours recursively
 			for neighbour in self.neighbour:
-				nodes[neighbour[0]][neighbour[1]].update(nodes)
+				# print self.x,self.y,"calls",neighbour[0],neighbour[1]
+				GridNodes.nodes[neighbour[0]][neighbour[1]].update(turn)
 		else:
-			# Draw one more circle
-			node_x_edge = int(0.05 * float(grid_resolution)) + self.x*grid_resolution + ( (self.current_state - 1) * (grid_resolution/3) ) # latter term decides which number of circle to place and where to place and 5 is manual adjust ment
-			node_y_edge = (self.y*grid_resolution) + ( (grid_resolution/2) - (grid_resolution/8) )# align center
-			self.circles.append( self.canvas.create_oval( node_x_edge, node_y_edge, (node_x_edge)+(grid_resolution/4), (node_y_edge)+(grid_resolution/4), fill='red') )
+			if self.node_type == turn or self.node_type == None:
+				# Draw one more atom
+				node_x_edge = int(0.05 * float(grid_resolution)) + self.x*grid_resolution + ( (self.current_state - 1) * (grid_resolution/3) ) # later term decides which number of atom to place and where to place and 5 is manual adjust ment
+				node_y_edge = (self.y*grid_resolution) + ( (grid_resolution/2) - (grid_resolution/8) )# align center
+				self.circles.append( self.canvas.create_oval( node_x_edge, node_y_edge, (node_x_edge)+(grid_resolution/4), (node_y_edge)+(grid_resolution/4), fill=GridNodes.colours[turn]) )
+			else:
+				# this is atom blast takeover, change owner
+				self.node_type = turn
+				# remove old owner atoms
+				for each_circle in self.circles:
+					self.canvas.delete(each_circle)
+				self.circles = []
+				# add new atoms
+				for n in range(self.current_state):
+					node_x_edge = int(0.05 * float(grid_resolution)) + self.x*grid_resolution + ( n * (grid_resolution/3) ) # later term decides which number of atom to place and where to place and 5 is manual adjust ment
+					node_y_edge = (self.y*grid_resolution) + ( (grid_resolution/2) - (grid_resolution/8) )# align center
+					self.circles.append( self.canvas.create_oval( node_x_edge, node_y_edge, (node_x_edge)+(grid_resolution/4), (node_y_edge)+(grid_resolution/4), fill=GridNodes.colours[turn]) )
 
 
 
 class CRGrid(object):
 	"""Class to initiate whole grid of the game board"""
-	def __init__(self, grid_size):
+	def __init__(self, grid_size, players):
 		self.size = grid_size
 		self.root = Tk()
 		self.root.title("Chain Reaction")
+		self.no_of_players = players
+		self.current_turn = 0
 
 		# self.firstframe = Frame(self.root)
 		# self.firstframe.pack()
@@ -80,6 +102,10 @@ class CRGrid(object):
 					self.nodes[numx].append( GridNodes( self.canvas, numx, numy ) )
 				except Exception, e:
 					self.nodes.append( [GridNodes( self.canvas, numx, numy )] )
+		# class variables for GridNodes
+		GridNodes.nodes = self.nodes
+		GridNodes.grid = self
+		GridNodes.colours = ['red','green','blue','yellow','black','orange']
 				
 
 		self.root.geometry("1000x900")  #Set starting window size
@@ -88,9 +114,19 @@ class CRGrid(object):
 	def canvas_click(self, event):
 		x = event.x/grid_resolution
 		y = event.y/grid_resolution
-		self.nodes[x][y].update(self.nodes)
+		if self.nodes[x][y].node_type == self.current_turn or self.nodes[x][y].node_type == None:
+			self.nodes[x][y].update( self.current_turn )
+			self.current_turn = self.get_next_turn()
+
+	def get_next_turn(self):
+		next_player = self.current_turn + 1
+		if next_player < self.no_of_players:
+			return next_player
+		else:
+			# all turn done start from first player
+			return 0
 
 
 if __name__ == '__main__':
-	game_grid = CRGrid(grid_size)
+	game_grid = CRGrid(grid_size, 2)
 
