@@ -114,8 +114,10 @@ class CRGrid(object):
 	def canvas_click(self, event):
 		x = event.x/grid_resolution
 		y = event.y/grid_resolution
+		# check for fail clicks
 		if self.nodes[x][y].node_type == self.current_turn or self.nodes[x][y].node_type == None:
 			self.nodes[x][y].update( self.current_turn )
+			# go to next player
 			self.current_turn = self.get_next_turn()
 
 	def get_next_turn(self):
